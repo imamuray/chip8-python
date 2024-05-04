@@ -1,4 +1,7 @@
+import time
 from dataclasses import dataclass
+
+import vt100
 
 
 @dataclass
@@ -52,31 +55,30 @@ class Bitmap:
     def __init__(self) -> None:
         self._pixels = [[False] * self.WIDTH for _ in range(self.HEIGHT)]
 
-    def set_on(self, point: Point) -> None:
+    def write_bit(self, point: Point) -> None:
         self._pixels[point.y][point.x] = True
 
-    def set_off(self, point: Point) -> None:
+    def delete_bit(self, point: Point) -> None:
         self._pixels[point.y][point.x] = False
 
-    def set_flip(self, point: Point) -> None:
+    def flip_bit(self, point: Point) -> None:
         self._pixels[point.y][point.x] = not self._pixels[point.y][point.x]
 
-    def set_value(self, point: Point, value: bool) -> None:
+    def set_bit(self, point: Point, value: bool) -> None:
         self._pixels[point.y][point.x] = value
 
     @property
     def pixels(self) -> list[list[bool]]:
         return self._pixels
 
-
-def write_splite(bitmap: Bitmap, point: Point, splite: Sprite) -> None:
-    for y in range(splite.y_size):
-        if point.y + y >= bitmap.HEIGHT:
-            continue
-        for x in range(splite.x_size):
-            if point.x + x >= bitmap.WIDTH:
+    def write_splite(self, point: Point, splite: Sprite) -> None:
+        for y in range(splite.y_size):
+            if point.y + y >= self.HEIGHT:
                 continue
-            bitmap.set_value(Point(point.x + x, point.y + y), splite.get_pixel(Point(x, y)))
+            for x in range(splite.x_size):
+                if point.x + x >= self.WIDTH:
+                    continue
+                self.set_bit(Point(point.x + x, point.y + y), splite.get_pixel(Point(x, y)))
 
 
 def draw_bitmap(bitmap: Bitmap, on_char: str = "█", off_char: str = " ", is_border: bool = False) -> None:
@@ -108,16 +110,26 @@ def main():
     # bitmap.set_on(Point(0, 31))
     # bitmap.set_on(Point(63, 31))
     # bitmap.set_on(Point(64 // 2, 32 // 2))
-    fonts = [ZERO, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, A, B, C, D, E, F]
+    fonts = [
+        font_to_sprite(font) for font in [ZERO, ONE, TWO, THREE, FOUR, FIVE, SIX, SEVEN, EIGHT, NINE, A, B, C, D, E, F]
+    ]
 
-    for i in range(len(fonts)):
-        x_offset = 8 * (i % 8)
-        y_offset = 5 * (i // 8) + i // 8
-        point = Point(x_offset, y_offset)
-        splite = font_to_sprite(fonts[i])
-        write_splite(bitmap, point, splite)
+    reset_screen = vt100.clear_screen() + vt100.return_cursor_to_home()
 
-    draw_bitmap(bitmap, is_border=True)
+    while True:
+        for i in range(len(fonts)):
+            x_offset = 8 * (i % 8)
+            y_offset = 5 * (i // 8) + i // 8
+            point = Point(x_offset, y_offset)
+            splite = fonts[i]
+            bitmap.write_splite(point, splite)
+
+        seconds = int(time.time() % 10)
+        bitmap.write_splite(Point(0, 25), fonts[seconds])
+
+        print(reset_screen, end="")
+        draw_bitmap(bitmap, is_border=True)
+        time.sleep(0.1)
 
 
 if __name__ == "__main__":
