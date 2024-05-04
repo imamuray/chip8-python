@@ -11,10 +11,12 @@
 		"vscode": {
 			"extensions": [
 				"charliermarsh.ruff",
-				"ms-python.mypy-type-checker"
+				"ms-python.mypy-type-checker",
+				"njpwerner.autodocstring"
 			]
 		}
-	}
+	},
+	"postStartCommand": "/workspaces/chip8-python/.devcontainer/postStart.sh"
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
