@@ -1,8 +1,10 @@
 import random
-from collections.abc import Callable
+import time
 
+import screen
 from memory import Memory
 from register import Register8, Register16
+from screen import Point, VirtualScreen
 
 DEFAULT_PC_ADDRESS = 0x200
 FONT_START_ADDRESS = 0x000
@@ -12,6 +14,13 @@ def _decode_x_y(opcode: int) -> tuple[int, int]:
     x = (opcode & 0x0F00) >> 8
     y = (opcode & 0x00F0) >> 4
     return (x, y)
+
+
+def _decode_x_y_n(opcode: int) -> tuple[int, int, int]:
+    x = (opcode & 0x0F00) >> 8
+    y = (opcode & 0x00F0) >> 4
+    n = opcode & 0x000F
+    return (x, y, n)
 
 
 def _decode_x_nn(opcode: int) -> tuple[int, int]:
@@ -24,20 +33,18 @@ def _decode_nnn(opcode: int) -> int:
     return opcode & 0x0FFF
 
 
-# TODO: 各種命令に対応する関数名はあとでわかりやすいものに変える
 class Chip8CPU:
-    def __init__(self, memory: Memory) -> None:
+    def __init__(self, memory: Memory, screen: VirtualScreen) -> None:
         self.memory = memory
-        self.stack = [0] * 16
+        self.screen = screen
 
+        self.stack = [0] * 16
         self.rg_vs = [Register8() for _ in range(16)]
         self.rg_i = Register16()
         self.rg_pc = Register16(DEFAULT_PC_ADDRESS)
         self.rg_sp = Register8()
         self.rg_dt = Register8()
         self.rg_st = Register8()
-
-        self.op_table: dict[int, Callable] = {}
 
     def __str__(self) -> str:
         return "\n".join(
@@ -72,8 +79,9 @@ class Chip8CPU:
         print(f"[DEBUG] opecode: {opcode:04x}")
 
         match opcode:
+            # 00E0 - clear screen
             case 0x00E0:
-                # TODO
+                self.screen.clear()
                 return
 
             # 00EE - ret
@@ -156,9 +164,17 @@ class Chip8CPU:
                 self.rg_vs[x].write(value)
                 return
 
-            # DXYN
+            # DXYN - draw sprite on screen
+            # スプライトは幅8bit高さN
             case 0xD000:
-                # TODO
+                x, y, n = _decode_x_y_n(opcode)
+                address = self.rg_i.read()
+                _bytes = [self.memory.read(i) for i in range(address, address + n)]
+                x_value = self.rg_vs[x].read()
+                y_value = self.rg_vs[y].read()
+                sprite = screen.bytes_to_sprite(_bytes)
+                collision_flag = self.screen.draw_sprite(Point(x_value, y_value), sprite)
+                self.rg_vs[0xF].write(collision_flag)
                 return
 
             case _:
@@ -375,20 +391,22 @@ def write_instruction(memory: Memory, address: int, code: int) -> int:
 
 
 if __name__ == "__main__":
-    memory = Memory()
-    instructions = [
-        0x2206,
-        0x6101,
-        0x8014,
-        0x60FF,
-        0x00EE,
-    ]
-    next_address = DEFAULT_PC_ADDRESS
-    for code in instructions:
-        next_address = write_instruction(memory, next_address, code)
+    import sys
 
-    cpu = Chip8CPU(memory)
-    print(cpu)
-    for _ in range(len(instructions)):
+    filename = sys.argv[1]
+
+    memory = Memory()
+    memory.load_fonts(FONT_START_ADDRESS)
+
+    with open(filename, "rb") as f:
+        for i, byte in enumerate(f.read()):
+            memory.write(DEFAULT_PC_ADDRESS + i, byte)
+
+    v_screen = VirtualScreen()
+    cpu = Chip8CPU(memory, v_screen)
+
+    while True:
         cpu.execute_instruction()
         print(cpu)
+        screen.render_to_console(cpu.screen, is_border=True)
+        time.sleep(0.1)
