@@ -46,7 +46,7 @@ class Chip8CPU:
                 f"sp: {self.rg_sp}",
                 f"dt: {self.rg_dt}",
                 f"st: {self.rg_st}",
-                f"stack: {self.stack}",
+                f"stack: {','.join([f'[{i:x}]{x:#x}' for i, x in enumerate(self.stack)])}",
             ]
         )
 
@@ -67,42 +67,57 @@ class Chip8CPU:
 
     def execute_instruction(self) -> None:
         opcode = self._get_opcode()
-        # print(f"[DEBUG] opecode: {opcode:04x}")
+        print(f"[DEBUG] opecode: {opcode:04x}")
 
         match opcode:
             case 0x00E0:
                 # TODO
                 return
+
+            # 00EE - ret
             case 0x00EE:
-                # TODO
+                sp = self.rg_sp.read() - 1
+                return_address = self.stack[sp]
+                self.rg_pc.write(return_address)
+                self.rg_sp.write(sp)
                 return
+
             case _:
                 pass
 
         match opcode & 0xF000:
-            # 0NNN
-            case 0x0000:
-                # TODO
-                return
+            # 0NNN - サポートしない
+            # case 0x0000:
+            #     return
 
-            # 1NNN
+            # 1NNN - jump addr
             case 0x1000:
-                # TODO
+                address = _decode_nnn(opcode)
+                self.rg_pc.write(address)
                 return
 
-            # 2NNN
+            # 2NNN - call addr
             case 0x2000:
-                # TODO
+                subroutine_address = _decode_nnn(opcode)
+                pc_address = self.rg_pc.read()
+                sp = self.rg_sp.read()
+                self.stack[sp] = pc_address
+                self.rg_sp.write(sp + 1)
+                self.rg_pc.write(subroutine_address)
                 return
 
-            # 3XNN
+            # 3XNN - if vx == nn then skip next instruction else continue
             case 0x3000:
-                # TODO
+                x, nn = _decode_x_nn(opcode)
+                if self.rg_vs[x].read() == nn:
+                    self.rg_pc.write(self.rg_pc.read() + 2)
                 return
 
-            # 4XNN
+            # 4XNN - if vx != nn then skip next instruction else continue
             case 0x4000:
-                # TODO
+                x, nn = _decode_x_nn(opcode)
+                if self.rg_vs[x].read() != nn:
+                    self.rg_pc.write(self.rg_pc.read() + 2)
                 return
 
             # 6XNN - vx := NN
@@ -111,9 +126,11 @@ class Chip8CPU:
                 self.rg_vs[x].write(nn)
                 return
 
-            # 7XNN
+            # 7XNN - vx += NN
             case 0x7000:
-                # TODO
+                x, nn = _decode_x_nn(opcode)
+                x_value = self.rg_vs[x].read()
+                self.rg_vs[x].write(x_value + nn)
                 return
 
             # ANNN
@@ -140,9 +157,11 @@ class Chip8CPU:
                 pass
 
         match opcode & 0xF00F:
-            # 5XY0
+            # 5XY0 - if vx == vy then skip next instruction else continue
             case 0x5000:
-                # TODO
+                x, y = _decode_x_y(opcode)
+                if self.rg_vs[x].read() == self.rg_vs[y].read():
+                    self.rg_pc.write(self.rg_pc.read() + 2)
                 return
 
             # 8XY0 - vx := vy
@@ -241,9 +260,11 @@ class Chip8CPU:
                 self.rg_vs[0xF].write(vf_value)
                 return
 
-            # 9XY0
+            # 9XY0 - if vx != vy then skip next instruction else continue
             case 0x9000:
-                # TODO
+                x, y = _decode_x_y(opcode)
+                if self.rg_vs[x].read() != self.rg_vs[y].read():
+                    self.rg_pc.write(self.rg_pc.read() + 2)
                 return
 
             case _:
@@ -319,7 +340,13 @@ def write_instruction(memory: Memory, address: int, code: int) -> int:
 
 if __name__ == "__main__":
     memory = Memory()
-    instructions = [0x6001, 0x6102, 0x6203, 0x6F0F, 0x83F0, 0x8411, 0x8242, 0x6E07, 0x81E3]
+    instructions = [
+        0x2206,
+        0x6101,
+        0x8014,
+        0x60FF,
+        0x00EE,
+    ]
     next_address = DEFAULT_PC_ADDRESS
     for code in instructions:
         next_address = write_instruction(memory, next_address, code)
@@ -328,4 +355,4 @@ if __name__ == "__main__":
     print(cpu)
     for _ in range(len(instructions)):
         cpu.execute_instruction()
-    print(cpu)
+        print(cpu)

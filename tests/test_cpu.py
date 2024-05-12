@@ -24,6 +24,106 @@ def create_test_memory(data_list: list[int], start_address: int = DEFAULT_PC_ADD
     return memory
 
 
+def test_00EE():
+    # 00EE - ret
+    test_data = [0x00, 0xEE]
+    start_address = 0x300
+    memory = create_test_memory(test_data, start_address)
+    cpu = Chip8CPU(memory)
+    cpu.rg_pc.write(start_address)
+    prev_sp = 1
+    cpu.rg_sp.write(prev_sp)
+    return_address = 0x222
+    cpu.stack[prev_sp - 1] = return_address
+
+    cpu.execute_instruction()
+    assert cpu.rg_pc.read() == return_address
+    assert cpu.rg_sp.read() == prev_sp - 1
+
+
+def test_1NNN():
+    # 1NNN - jump NNN
+    test_data = [0x13, 0x33]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+
+    cpu.execute_instruction()
+    assert cpu.rg_pc.read() == 0x333
+
+
+def test_2NNN():
+    # 2NNN - call addr
+    test_data = [0x23, 0x33]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+    prev_pc = cpu.rg_pc.read()
+    prev_sp = cpu.rg_sp.read()
+
+    cpu.execute_instruction()
+    assert cpu.rg_pc.read() == 0x333
+    assert cpu.rg_sp.read() == prev_sp + 1
+    # 1命令実行につきpcは2増える
+    assert cpu.stack[prev_sp] == prev_pc + 2
+
+
+@pytest.mark.parametrize(
+    "x,op_value,x_value,start_address,expect",
+    [
+        (0x0, 0x10, 0x10, 0x200, 0x204),
+        (0x0, 0x11, 0x10, 0x200, 0x202),
+    ],
+)
+def test_3XNN(x: int, op_value: int, x_value: int, start_address: int, expect: int):
+    # 3XNN - if vx == nn then skip next instruction else continue
+    test_data = [0x30 | x, op_value]
+    memory = create_test_memory(test_data, start_address)
+    cpu = Chip8CPU(memory)
+    cpu.rg_vs[x].write(x_value)
+    cpu.rg_pc.write(start_address)
+
+    cpu.execute_instruction()
+    assert cpu.rg_pc.read() == expect
+
+
+@pytest.mark.parametrize(
+    "x,op_value,x_value,start_address,expect",
+    [
+        (0x0, 0x10, 0x10, 0x200, 0x202),
+        (0x0, 0x11, 0x10, 0x200, 0x204),
+    ],
+)
+def test_4XNN(x: int, op_value: int, x_value: int, start_address: int, expect: int):
+    # 4XNN - if vx != nn then skip next instruction else continue
+    test_data = [0x40 | x, op_value]
+    memory = create_test_memory(test_data, start_address)
+    cpu = Chip8CPU(memory)
+    cpu.rg_vs[x].write(x_value)
+    cpu.rg_pc.write(start_address)
+
+    cpu.execute_instruction()
+    assert cpu.rg_pc.read() == expect
+
+
+@pytest.mark.parametrize(
+    "x,y,x_value,y_value,start_address,expect",
+    [
+        (0x0, 0x1, 0x10, 0x10, 0x200, 0x204),
+        (0x0, 0x1, 0x10, 0x11, 0x200, 0x202),
+    ],
+)
+def test_5XY0(x: int, y: int, x_value: int, y_value: int, start_address: int, expect: int):
+    # 5XY0 - if vx == vy then skip next instruction else continue
+    test_data = [0x50 | x, 0x00 | (y << 4)]
+    memory = create_test_memory(test_data, start_address)
+    cpu = Chip8CPU(memory)
+    cpu.rg_vs[x].write(x_value)
+    cpu.rg_vs[y].write(y_value)
+    cpu.rg_pc.write(start_address)
+
+    cpu.execute_instruction()
+    assert cpu.rg_pc.read() == expect
+
+
 @pytest.mark.parametrize(
     "registor,value",
     [
@@ -40,6 +140,24 @@ def test_6XNN(registor: int, value: int):
 
     cpu.execute_instruction()
     assert cpu.rg_vs[registor].read() == value
+
+
+@pytest.mark.parametrize(
+    "x,op_value,x_value,expect",
+    [
+        (0x0, 0x01, 0x02, 0x03),
+        (0x0, 0xFF, 0x02, 0x01),
+    ],
+)
+def test_7XNN(x: int, op_value: int, x_value: int, expect: int):
+    # 7XNN - vx += NN
+    test_data = [0x70 | x, op_value]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+    cpu.rg_vs[x].write(x_value)
+
+    cpu.execute_instruction()
+    assert cpu.rg_vs[x].read() == expect
 
 
 @pytest.mark.parametrize(
@@ -226,3 +344,40 @@ def test_8XYE(x: int, y: int, x_value: int, expect_x: int, expect_f):
     cpu.execute_instruction()
     assert cpu.rg_vs[x].read() == expect_x
     assert cpu.rg_vs[0xF].read() == expect_f
+
+
+@pytest.mark.parametrize(
+    "x,y,x_value,y_value,start_address,expect",
+    [
+        (0x0, 0x1, 0x10, 0x10, 0x200, 0x202),
+        (0x0, 0x1, 0x10, 0x11, 0x200, 0x204),
+    ],
+)
+def test_9XY0(x: int, y: int, x_value: int, y_value: int, start_address: int, expect: int):
+    # 9XY0 - if vx != vy then skip next instruction else continue
+    test_data = [0x90 | x, 0x00 | (y << 4)]
+    memory = create_test_memory(test_data, start_address)
+    cpu = Chip8CPU(memory)
+    cpu.rg_vs[x].write(x_value)
+    cpu.rg_vs[y].write(y_value)
+    cpu.rg_pc.write(start_address)
+
+    cpu.execute_instruction()
+    assert cpu.rg_pc.read() == expect
+
+
+def test_call_and_ret():
+    # test_data
+    # 0x200: 2206: call 0x206
+    # 0x202: 0000: nop
+    # 0x204: 0000: nop
+    # 0x206: 00EE: ret
+    test_data = [0x22, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0xEE]
+    start_address = 0x200
+    memory = create_test_memory(test_data, start_address)
+    cpu = Chip8CPU(memory)
+    cpu.rg_pc.write(start_address)
+
+    cpu.execute_instruction()  # call
+    cpu.execute_instruction()  # ret
+    assert cpu.rg_pc.read() == 0x202
