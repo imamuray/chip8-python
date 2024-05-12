@@ -69,16 +69,82 @@ class Chip8CPU:
         opcode = self._get_opcode()
         # print(f"[DEBUG] opecode: {opcode:04x}")
 
+        match opcode:
+            case 0x00E0:
+                # TODO
+                return
+            case 0x00EE:
+                # TODO
+                return
+            case _:
+                pass
+
         match opcode & 0xF000:
+            # 0NNN
+            case 0x0000:
+                # TODO
+                return
+
+            # 1NNN
+            case 0x1000:
+                # TODO
+                return
+
+            # 2NNN
+            case 0x2000:
+                # TODO
+                return
+
+            # 3XNN
+            case 0x3000:
+                # TODO
+                return
+
+            # 4XNN
+            case 0x4000:
+                # TODO
+                return
+
             # 6XNN - vx := NN
             case 0x6000:
                 x, nn = _decode_x_nn(opcode)
                 self.rg_vs[x].write(nn)
                 return
+
+            # 7XNN
+            case 0x7000:
+                # TODO
+                return
+
+            # ANNN
+            case 0xA000:
+                # TODO
+                return
+
+            # BNNN
+            case 0xB000:
+                # TODO
+                return
+
+            # CXNN
+            case 0xC000:
+                # TODO
+                return
+
+            # DXYN
+            case 0xD000:
+                # TODO
+                return
+
             case _:
                 pass
 
         match opcode & 0xF00F:
+            # 5XY0
+            case 0x5000:
+                # TODO
+                return
+
             # 8XY0 - vx := vy
             case 0x8000:
                 x, y = _decode_x_y(opcode)
@@ -173,6 +239,70 @@ class Chip8CPU:
                 result = x_value << 1
                 self.rg_vs[x].write(result & 0xFF)
                 self.rg_vs[0xF].write(vf_value)
+                return
+
+            # 9XY0
+            case 0x9000:
+                # TODO
+                return
+
+            case _:
+                pass
+
+        match opcode & 0xF0FF:
+            # EX9E
+            case 0xE09E:
+                # TODO
+                return
+
+            # EXA1
+            case 0xE0A1:
+                # TODO
+                return
+
+            # FX07
+            case 0xF007:
+                # TODO
+                return
+
+            # FX0A
+            case 0xF00A:
+                # TODO
+                return
+
+            # FX15
+            case 0xF015:
+                # TODO
+                return
+
+            # FX18
+            case 0xF018:
+                # TODO
+                return
+
+            # FX1E
+            case 0xF01E:
+                # TODO
+                return
+
+            # FX29
+            case 0xF029:
+                # TODO
+                return
+
+            # FX33
+            case 0xF033:
+                # TODO
+                return
+
+            # FX55
+            case 0xF055:
+                # TODO
+                return
+
+            # FX65
+            case 0xF065:
+                # TODO
                 return
 
             case _:
