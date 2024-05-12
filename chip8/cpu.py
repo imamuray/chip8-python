@@ -85,6 +85,7 @@ class Chip8CPU:
                 y_value = self.rg_vs[y].read()
                 self.rg_vs[x].write(y_value)
                 return
+
             # 8XY1 - vx |= vy
             case 0x8001:
                 x, y = _decode_x_y(opcode)
@@ -92,6 +93,7 @@ class Chip8CPU:
                 y_value = self.rg_vs[y].read()
                 self.rg_vs[x].write(x_value | y_value)
                 return
+
             # 8XY2 - vx &= vy
             case 0x8002:
                 x, y = _decode_x_y(opcode)
@@ -99,6 +101,7 @@ class Chip8CPU:
                 y_value = self.rg_vs[y].read()
                 self.rg_vs[x].write(x_value & y_value)
                 return
+
             # 8XY3 - vx ^= vy
             case 0x8003:
                 x, y = _decode_x_y(opcode)
@@ -106,6 +109,72 @@ class Chip8CPU:
                 y_value = self.rg_vs[y].read()
                 self.rg_vs[x].write(x_value ^ y_value)
                 return
+
+            # 8XY4 - vx += vy, vf = 1 on carry
+            case 0x8004:
+                x, y = _decode_x_y(opcode)
+                x_value = self.rg_vs[x].read()
+                y_value = self.rg_vs[y].read()
+
+                result = x_value + y_value
+                carry = 1 if (result & 0x100) == 0x100 else 0
+                self.rg_vs[x].write(result & 0xFF)
+                self.rg_vs[0xF].write(carry)
+                return
+
+            # 8XY5 - vx -= vy, if vx > vy then vf = 1 else vf = 0
+            # vf は carry フラグと考えると加算のときと合う
+            case 0x8005:
+                x, y = _decode_x_y(opcode)
+                x_value = self.rg_vs[x].read()
+                y_value = self.rg_vs[y].read()
+
+                # 2の補数表現を使って vx - yv を計算
+                # python のビット反転は -(x + 1) と同じ
+                # https://docs.python.org/ja/3/reference/expressions.html#unary-arithmetic-and-bitwise-operations
+                result = x_value + (~y_value & 0xFF) + 1
+                carry = 1 if (result & 0x100) == 0x100 else 0
+                self.rg_vs[x].write(result & 0xFF)
+                self.rg_vs[0xF].write(carry)
+                return
+
+            # 8XY6 - vx >>= 1, vf には vx の最下位ビットを格納
+            case 0x8006:
+                x, _ = _decode_x_y(opcode)
+                x_value = self.rg_vs[x].read()
+
+                vf_value = x_value & 0x01
+                result = x_value >> 1
+                self.rg_vs[x].write(result & 0xFF)
+                self.rg_vs[0xF].write(vf_value)
+                return
+
+            # 8XY7 - vx := vy - vx, if vy > vx then vf = 1 else vf = 0
+            case 0x8007:
+                x, y = _decode_x_y(opcode)
+                x_value = self.rg_vs[x].read()
+                y_value = self.rg_vs[y].read()
+
+                # 2の補数表現を使って vy - yx を計算
+                # python のビット反転は -(x + 1) と同じ
+                # https://docs.python.org/ja/3/reference/expressions.html#unary-arithmetic-and-bitwise-operations
+                result = y_value + (~x_value & 0xFF) + 1
+                carry = 1 if (result & 0x100) == 0x100 else 0
+                self.rg_vs[x].write(result & 0xFF)
+                self.rg_vs[0xF].write(carry)
+                return
+
+            # 8XYE - vx <<= 1, vf には vx の最上位ビットを格納
+            case 0x800E:
+                x, _ = _decode_x_y(opcode)
+                x_value = self.rg_vs[x].read()
+
+                vf_value = (x_value & 0x80) >> 7
+                result = x_value << 1
+                self.rg_vs[x].write(result & 0xFF)
+                self.rg_vs[0xF].write(vf_value)
+                return
+
             case _:
                 pass
 
