@@ -1,6 +1,6 @@
 import pytest
 
-from chip8.cpu import DEFAULT_PC_ADDRESS, Chip8CPU
+from chip8.cpu import DEFAULT_PC_ADDRESS, FONT_START_ADDRESS, Chip8CPU
 from chip8.memory import Memory
 
 
@@ -364,6 +364,152 @@ def test_9XY0(x: int, y: int, x_value: int, y_value: int, start_address: int, ex
 
     cpu.execute_instruction()
     assert cpu.rg_pc.read() == expect
+
+
+def test_ANNN():
+    # ANNN - i := NNN
+    test_data = [0xA3, 0x33]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+    cpu.rg_i.write(0x00)
+
+    cpu.execute_instruction()
+    assert cpu.rg_i.read() == 0x333
+
+
+def test_BNNN():
+    # BNNN - jump to address v0 + NNN
+    test_data = [0xB3, 0x00]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+    cpu.rg_vs[0].write(0x33)
+
+    cpu.execute_instruction()
+    assert cpu.rg_pc.read() == 0x333
+
+
+@pytest.mark.parametrize("times", range(10))
+def test_CXNN(times):
+    # CXNN - vx := random & NN
+    test_data = [0xC0, 0x0F]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+    cpu.rg_vs[0].write(0x00)
+
+    cpu.execute_instruction()
+    assert cpu.rg_vs[0].read() in range(0, 0x10)
+
+
+def test_FX07():
+    # FX07 - vx := dt
+    test_data = [0xF0, 0x07]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+    expect = 0x11
+    cpu.rg_dt.write(expect)
+    cpu.rg_vs[0].write(0x00)
+
+    cpu.execute_instruction()
+    assert cpu.rg_vs[0].read() == expect
+
+
+def test_FX15():
+    # FX15 - dt := vx
+    test_data = [0xF0, 0x15]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+    expect = 0x11
+    cpu.rg_vs[0].write(expect)
+    cpu.rg_dt.write(0x00)
+
+    cpu.execute_instruction()
+    assert cpu.rg_dt.read() == expect
+
+
+def test_FX18():
+    # FX18 - st := vx
+    test_data = [0xF0, 0x18]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+    expect = 0x11
+    cpu.rg_vs[0].write(expect)
+    cpu.rg_st.write(0x00)
+
+    cpu.execute_instruction()
+    assert cpu.rg_st.read() == expect
+
+
+def test_FX1E():
+    # FX1E - i += vx
+    test_data = [0xF0, 0x1E]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+    cpu.rg_vs[0].write(0x01)
+    cpu.rg_i.write(0x02)
+
+    cpu.execute_instruction()
+    assert cpu.rg_i.read() == 0x03
+
+
+def test_FX29():
+    # FX29 - load font address from vx
+    test_data = [0xF0, 0x29]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+    cpu.rg_vs[0].write(0x2)
+    cpu.rg_i.write(0x0000)
+    expect = FONT_START_ADDRESS + 0x2 * 5
+
+    cpu.execute_instruction()
+    assert cpu.rg_i.read() == expect
+
+
+def test_FX33():
+    # FX33 - bcd vx
+    test_data = [0xF0, 0x33]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+    cpu.rg_vs[0].write(128)
+    cpu.rg_i.write(0x300)
+
+    cpu.execute_instruction()
+    assert cpu.memory.read(0x300) == 1
+    assert cpu.memory.read(0x301) == 2
+    assert cpu.memory.read(0x302) == 8
+
+
+def test_FX55():
+    # FX55 - save vx
+    test_data = [0xF2, 0x55]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+    address = 0x300
+    cpu.rg_i.write(address)
+    cpu.rg_vs[0].write(0x11)
+    cpu.rg_vs[1].write(0x22)
+    cpu.rg_vs[2].write(0x33)
+
+    cpu.execute_instruction()
+    assert cpu.memory.read(address) == 0x11
+    assert cpu.memory.read(address + 1) == 0x22
+    assert cpu.memory.read(address + 2) == 0x33
+
+
+def test_FX65():
+    # FX65 - load vx
+    test_data = [0xF2, 0x65]
+    memory = create_test_memory(test_data)
+    cpu = Chip8CPU(memory)
+    address = 0x300
+    cpu.rg_i.write(address)
+    cpu.memory.write(address, 0x11)
+    cpu.memory.write(address + 1, 0x22)
+    cpu.memory.write(address + 2, 0x33)
+
+    cpu.execute_instruction()
+    assert cpu.rg_vs[0].read() == 0x11
+    assert cpu.rg_vs[1].read() == 0x22
+    assert cpu.rg_vs[2].read() == 0x33
 
 
 def test_call_and_ret():

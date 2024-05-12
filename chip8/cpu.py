@@ -1,9 +1,11 @@
+import random
 from collections.abc import Callable
 
 from memory import Memory
 from register import Register8, Register16
 
 DEFAULT_PC_ADDRESS = 0x200
+FONT_START_ADDRESS = 0x000
 
 
 def _decode_x_y(opcode: int) -> tuple[int, int]:
@@ -133,19 +135,25 @@ class Chip8CPU:
                 self.rg_vs[x].write(x_value + nn)
                 return
 
-            # ANNN
+            # ANNN - i := NNN
             case 0xA000:
-                # TODO
+                address = _decode_nnn(opcode)
+                self.rg_i.write(address)
                 return
 
-            # BNNN
+            # BNNN - jump to address v0 + NNN
             case 0xB000:
-                # TODO
+                nnn = _decode_nnn(opcode)
+                v0 = self.rg_vs[0].read()
+                address = v0 + nnn
+                self.rg_pc.write(address)
                 return
 
-            # CXNN
+            # CXNN - vx := random & NN
             case 0xC000:
-                # TODO
+                x, nn = _decode_x_nn(opcode)
+                value = random.randint(0, 255) & nn
+                self.rg_vs[x].write(value)
                 return
 
             # DXYN
@@ -281,9 +289,11 @@ class Chip8CPU:
                 # TODO
                 return
 
-            # FX07
+            # FX07 - vx := dt
             case 0xF007:
-                # TODO
+                x, _ = _decode_x_nn(opcode)
+                dt_value = self.rg_dt.read()
+                self.rg_vs[x].write(dt_value)
                 return
 
             # FX0A
@@ -291,39 +301,65 @@ class Chip8CPU:
                 # TODO
                 return
 
-            # FX15
+            # FX15 - dt := vx
             case 0xF015:
-                # TODO
+                x, _ = _decode_x_nn(opcode)
+                x_value = self.rg_vs[x].read()
+                self.rg_dt.write(x_value)
                 return
 
-            # FX18
+            # FX18 - st := vx
             case 0xF018:
-                # TODO
+                x, _ = _decode_x_nn(opcode)
+                x_value = self.rg_vs[x].read()
+                self.rg_st.write(x_value)
                 return
 
-            # FX1E
+            # FX1E - i += vx
             case 0xF01E:
-                # TODO
+                x, _ = _decode_x_nn(opcode)
+                x_value = self.rg_vs[x].read()
+                i_value = self.rg_i.read()
+                self.rg_i.write(i_value + x_value)
                 return
 
-            # FX29
+            # FX29 - load font address from vx
+            # vx に格納されている16進数の値を i に格納する
             case 0xF029:
-                # TODO
+                x, _ = _decode_x_nn(opcode)
+                x_value = self.rg_vs[x].read()
+                # NOTE: font は1文字5バイトで順番に格納されているので、vxの値を5倍にする
+                address = FONT_START_ADDRESS + (x_value & 0xF) * 5
+                self.rg_i.write(address)
                 return
 
-            # FX33
+            # FX33 - bcd vx
             case 0xF033:
-                # TODO
+                x, _ = _decode_x_nn(opcode)
+                x_value = self.rg_vs[x].read()
+                address = self.rg_i.read()
+                hundreds, tens, ones = x_value // 100, (x_value // 10) % 10, x_value % 10
+                self.memory.write(address, hundreds)
+                self.memory.write(address + 1, tens)
+                self.memory.write(address + 2, ones)
                 return
 
-            # FX55
+            # FX55 - save vx
             case 0xF055:
-                # TODO
+                target, _ = _decode_x_nn(opcode)
+                address = self.rg_i.read()
+                for i in range(0, target + 1):
+                    rg_x_value = self.rg_vs[i].read()
+                    self.memory.write(address + i, rg_x_value)
                 return
 
-            # FX65
+            # FX65 - load vx
             case 0xF065:
-                # TODO
+                target, _ = _decode_x_nn(opcode)
+                address = self.rg_i.read()
+                for i in range(0, target + 1):
+                    value = self.memory.read(address + i)
+                    self.rg_vs[i].write(value)
                 return
 
             case _:
