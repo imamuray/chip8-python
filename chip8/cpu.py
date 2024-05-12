@@ -6,6 +6,22 @@ from register import Register8, Register16
 DEFAULT_PC_ADDRESS = 0x200
 
 
+def _decode_x_y(opcode: int) -> tuple[int, int]:
+    x = (opcode & 0x0F00) >> 8
+    y = (opcode & 0x00F0) >> 4
+    return (x, y)
+
+
+def _decode_x_nn(opcode: int) -> tuple[int, int]:
+    x = (opcode & 0x0F00) >> 8
+    nn = opcode & 0x00FF
+    return (x, nn)
+
+
+def _decode_nnn(opcode: int) -> int:
+    return opcode & 0x0FFF
+
+
 # TODO: 各種命令に対応する関数名はあとでわかりやすいものに変える
 class Chip8CPU:
     def __init__(self, memory: Memory) -> None:
@@ -34,7 +50,7 @@ class Chip8CPU:
             ]
         )
 
-    def get_opcode(self) -> int:
+    def _get_opcode(self) -> int:
         """
         メモリから pc + 2 分読み込んで opcode を取得する。
 
@@ -50,45 +66,45 @@ class Chip8CPU:
         return opcode
 
     def execute_instruction(self) -> None:
-        opcode = self.get_opcode()
-        # TODO: とりあえず 8xxx 系の命令を作ってみる
-        print(f"[DEBUG] opecode: {opcode:04x}")
-
-        # NOTE: 8XYn としたときの X, Y
-        opcode_x = (opcode & 0x0F00) >> 8
-        opcode_y = (opcode & 0x00F0) >> 4
-        opcode_nn = opcode & 0x00FF
+        opcode = self._get_opcode()
+        # print(f"[DEBUG] opecode: {opcode:04x}")
 
         match opcode & 0xF000:
+            # 6XNN - vx := NN
             case 0x6000:
-                self.rg_vs[opcode_x].write(opcode_nn)
+                x, nn = _decode_x_nn(opcode)
+                self.rg_vs[x].write(nn)
                 return
             case _:
                 pass
 
         match opcode & 0xF00F:
-            # vx := vy
+            # 8XY0 - vx := vy
             case 0x8000:
-                y = self.rg_vs[opcode_y].read()
-                self.rg_vs[opcode_x].write(y)
+                x, y = _decode_x_y(opcode)
+                y_value = self.rg_vs[y].read()
+                self.rg_vs[x].write(y_value)
                 return
-            # vx: |= yv
+            # 8XY1 - vx |= vy
             case 0x8001:
-                x = self.rg_vs[opcode_x].read()
-                y = self.rg_vs[opcode_y].read()
-                self.rg_vs[opcode_x].write(x | y)
+                x, y = _decode_x_y(opcode)
+                x_value = self.rg_vs[x].read()
+                y_value = self.rg_vs[y].read()
+                self.rg_vs[x].write(x_value | y_value)
                 return
-            # vx: &= yv
+            # 8XY2 - vx &= vy
             case 0x8002:
-                x = self.rg_vs[opcode_x].read()
-                y = self.rg_vs[opcode_y].read()
-                self.rg_vs[opcode_x].write(x & y)
+                x, y = _decode_x_y(opcode)
+                x_value = self.rg_vs[x].read()
+                y_value = self.rg_vs[y].read()
+                self.rg_vs[x].write(x_value & y_value)
                 return
-            # vx: ^= yv
+            # 8XY3 - vx ^= vy
             case 0x8003:
-                x = self.rg_vs[opcode_x].read()
-                y = self.rg_vs[opcode_y].read()
-                self.rg_vs[opcode_x].write(x ^ y)
+                x, y = _decode_x_y(opcode)
+                x_value = self.rg_vs[x].read()
+                y_value = self.rg_vs[y].read()
+                self.rg_vs[x].write(x_value ^ y_value)
                 return
             case _:
                 pass
