@@ -1,5 +1,6 @@
 import random
 import time
+from enum import Enum, auto
 
 import screen
 from memory import Memory
@@ -33,6 +34,42 @@ def _decode_nnn(opcode: int) -> int:
     return opcode & 0x0FFF
 
 
+class CPUState(Enum):
+    RUNNING = auto()
+    WAITING = auto()
+
+
+KEY_MAP = {
+    "1": 0x1,
+    "2": 0x2,
+    "3": 0x3,
+    "4": 0xC,
+    "q": 0x4,
+    "w": 0x5,
+    "e": 0x6,
+    "r": 0xD,
+    "a": 0x7,
+    "s": 0x8,
+    "d": 0x9,
+    "f": 0xE,
+    "z": 0xA,
+    "x": 0x0,
+    "c": 0xB,
+    "v": 0xF,
+}
+
+
+def _get_key_value(key: str | None) -> int | None:
+    match key:
+        case None:
+            return None
+        case _:
+            key_lowered = key.lower()
+            if key_lowered not in KEY_MAP.keys():
+                return None
+            return KEY_MAP[key_lowered]
+
+
 class Chip8CPU:
     def __init__(self, memory: Memory, screen: VirtualScreen) -> None:
         self.memory = memory
@@ -45,6 +82,8 @@ class Chip8CPU:
         self.rg_sp = Register8()
         self.rg_dt = Register8()
         self.rg_st = Register8()
+
+        self.state = CPUState.RUNNING
 
     def __str__(self) -> str:
         return "\n".join(
@@ -74,7 +113,21 @@ class Chip8CPU:
         self.rg_pc.write(program_counter + 2)
         return opcode
 
-    def execute_instruction(self) -> None:
+    def execute_instruction(self, pressed_key: str | None = None) -> None:
+        print(f"[DEBUG] key: {pressed_key}")
+        # FX0A の処理
+        # TODO: 実装見直し
+        if self.state == CPUState.WAITING:
+            if not pressed_key:
+                return
+            match _get_key_value(pressed_key):
+                case None:
+                    return
+                case key_value:
+                    self.rg_vs[self.prev_decoded_x].write(key_value)
+                    self.state = CPUState.RUNNING
+                    return
+
         opcode = self._get_opcode()
         print(f"[DEBUG] opecode: {opcode:04x}")
 
@@ -295,15 +348,25 @@ class Chip8CPU:
                 pass
 
         match opcode & 0xF0FF:
-            # EX9E
+            # EX9E - skp vx
             case 0xE09E:
-                # TODO
-                return
+                x, _ = _decode_x_nn(opcode)
+                x_value = self.rg_vs[x].read()
+                match _get_key_value(pressed_key):
+                    case key_value if key_value == x_value:
+                        self.rg_pc.write(self.rg_pc.read() + 2)
+                    case _:
+                        return
 
-            # EXA1
+            # EXA1 - sknp vx
             case 0xE0A1:
-                # TODO
-                return
+                x, _ = _decode_x_nn(opcode)
+                x_value = self.rg_vs[x].read()
+                match _get_key_value(pressed_key):
+                    case key_value if key_value != x_value:
+                        self.rg_pc.write(self.rg_pc.read() + 2)
+                    case _:
+                        return
 
             # FX07 - vx := dt
             case 0xF007:
@@ -312,9 +375,11 @@ class Chip8CPU:
                 self.rg_vs[x].write(dt_value)
                 return
 
-            # FX0A
+            # FX0A - load key to vx
             case 0xF00A:
-                # TODO
+                x, _ = _decode_x_nn(opcode)
+                self.state = CPUState.WAITING
+                self.prev_decoded_x = x
                 return
 
             # FX15 - dt := vx

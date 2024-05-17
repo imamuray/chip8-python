@@ -56,15 +56,15 @@ class VirtualScreen:
         for y in range(splite.y_size):
             drow_y = point.y + y
             if drow_y >= self.HEIGHT:
-                drow_y %= self.HEIGHT
+                continue
             for x in range(splite.x_size):
                 drow_x = point.x + x
                 if drow_x >= self.WIDTH:
-                    drow_x %= self.WIDTH
+                    continue
                 drow_point = Point(drow_x, drow_y)
                 prev = self.get_pixel(drow_point)
-                self.set_bit(drow_point, splite.get_pixel(Point(x, y)))
-                # もともとあったピクセルが消えた場合
+                self.xor_bit(drow_point, splite.get_pixel(Point(x, y)))
+                # もともとあったピクセルが消えた場合 collision_flag を立てる
                 if prev and not self.get_pixel(drow_point):
                     collision_flag = 1
         return collision_flag
