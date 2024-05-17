@@ -34,7 +34,7 @@ def test_00E0():
     cpu = Chip8CPU(memory, VirtualScreen())
     cpu.screen.set_bit(Point(0, 0), True)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert not any(chain.from_iterable(cpu.screen.pixels))
 
 
@@ -50,7 +50,7 @@ def test_00EE():
     return_address = 0x222
     cpu.stack[prev_sp - 1] = return_address
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_pc.read() == return_address
     assert cpu.rg_sp.read() == prev_sp - 1
 
@@ -61,7 +61,7 @@ def test_1NNN():
     memory = create_test_memory(test_data)
     cpu = Chip8CPU(memory, VirtualScreen())
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_pc.read() == 0x333
 
 
@@ -73,7 +73,7 @@ def test_2NNN():
     prev_pc = cpu.rg_pc.read()
     prev_sp = cpu.rg_sp.read()
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_pc.read() == 0x333
     assert cpu.rg_sp.read() == prev_sp + 1
     # 1命令実行につきpcは2増える
@@ -95,7 +95,7 @@ def test_3XNN(x: int, op_value: int, x_value: int, start_address: int, expect: i
     cpu.rg_vs[x].write(x_value)
     cpu.rg_pc.write(start_address)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_pc.read() == expect
 
 
@@ -114,7 +114,7 @@ def test_4XNN(x: int, op_value: int, x_value: int, start_address: int, expect: i
     cpu.rg_vs[x].write(x_value)
     cpu.rg_pc.write(start_address)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_pc.read() == expect
 
 
@@ -134,7 +134,7 @@ def test_5XY0(x: int, y: int, x_value: int, y_value: int, start_address: int, ex
     cpu.rg_vs[y].write(y_value)
     cpu.rg_pc.write(start_address)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_pc.read() == expect
 
 
@@ -152,7 +152,7 @@ def test_6XNN(registor: int, value: int):
     cpu = Chip8CPU(memory, VirtualScreen())
     cpu.rg_vs[registor].write(0x00)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_vs[registor].read() == value
 
 
@@ -170,7 +170,7 @@ def test_7XNN(x: int, op_value: int, x_value: int, expect: int):
     cpu = Chip8CPU(memory, VirtualScreen())
     cpu.rg_vs[x].write(x_value)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_vs[x].read() == expect
 
 
@@ -189,7 +189,7 @@ def test_8XY0(x: int, y: int, x_value: int, y_value: int):
     cpu.rg_vs[x].write(x_value)
     cpu.rg_vs[y].write(y_value)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_vs[x].read() == y_value
     assert cpu.rg_vs[y].read() == y_value
 
@@ -209,7 +209,7 @@ def test_8XY1(x: int, y: int, x_value: int, y_value: int, expect: int):
     cpu.rg_vs[x].write(x_value)
     cpu.rg_vs[y].write(y_value)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_vs[x].read() == expect
     assert cpu.rg_vs[y].read() == y_value
 
@@ -229,7 +229,7 @@ def test_8XY2(x: int, y: int, x_value: int, y_value: int, expect: int):
     cpu.rg_vs[x].write(x_value)
     cpu.rg_vs[y].write(y_value)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_vs[x].read() == expect
     assert cpu.rg_vs[y].read() == y_value
 
@@ -249,7 +249,7 @@ def test_8XY3(x: int, y: int, x_value: int, y_value: int, expect: int):
     cpu.rg_vs[x].write(x_value)
     cpu.rg_vs[y].write(y_value)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_vs[x].read() == expect
     assert cpu.rg_vs[y].read() == y_value
 
@@ -270,7 +270,7 @@ def test_8XY4(x: int, y: int, x_value: int, y_value: int, expect_x: int, expect_
     cpu.rg_vs[y].write(y_value)
     cpu.rg_vs[0xF].write(0x00)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_vs[x].read() == expect_x
     assert cpu.rg_vs[y].read() == y_value
     assert cpu.rg_vs[0xF].read() == expect_f
@@ -292,7 +292,7 @@ def test_8XY5(x: int, y: int, x_value: int, y_value: int, expect_x: int, expect_
     cpu.rg_vs[y].write(y_value)
     cpu.rg_vs[0xF].write(0x00)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_vs[x].read() == expect_x
     assert cpu.rg_vs[y].read() == y_value
     assert cpu.rg_vs[0xF].read() == expect_f
@@ -313,7 +313,7 @@ def test_8XY6(x: int, y: int, x_value: int, expect_x: int, expect_f):
     cpu.rg_vs[x].write(x_value)
     cpu.rg_vs[0xF].write(0x00)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_vs[x].read() == expect_x
     assert cpu.rg_vs[0xF].read() == expect_f
 
@@ -334,7 +334,7 @@ def test_8XY7(x: int, y: int, x_value: int, y_value: int, expect_x: int, expect_
     cpu.rg_vs[y].write(y_value)
     cpu.rg_vs[0xF].write(0x00)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_vs[x].read() == expect_x
     assert cpu.rg_vs[y].read() == y_value
     assert cpu.rg_vs[0xF].read() == expect_f
@@ -355,7 +355,7 @@ def test_8XYE(x: int, y: int, x_value: int, expect_x: int, expect_f):
     cpu.rg_vs[x].write(x_value)
     cpu.rg_vs[0xF].write(0x00)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_vs[x].read() == expect_x
     assert cpu.rg_vs[0xF].read() == expect_f
 
@@ -376,7 +376,7 @@ def test_9XY0(x: int, y: int, x_value: int, y_value: int, start_address: int, ex
     cpu.rg_vs[y].write(y_value)
     cpu.rg_pc.write(start_address)
 
-    cpu.execute_instruction()
+    cpu._execute_instruction()
     assert cpu.rg_pc.read() == expect
 
 
