@@ -54,13 +54,9 @@ class VirtualScreen:
     def draw_sprite(self, point: Point, splite: Sprite) -> int:
         collision_flag = 0
         for y in range(splite.y_size):
-            drow_y = point.y + y
-            if drow_y >= self.HEIGHT:
-                continue
+            drow_y = (point.y + y) % self.HEIGHT
             for x in range(splite.x_size):
-                drow_x = point.x + x
-                if drow_x >= self.WIDTH:
-                    continue
+                drow_x = (point.x + x) % self.WIDTH
                 drow_point = Point(drow_x, drow_y)
                 prev = self.get_pixel(drow_point)
                 self.xor_bit(drow_point, splite.get_pixel(Point(x, y)))
