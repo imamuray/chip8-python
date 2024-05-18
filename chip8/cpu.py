@@ -14,29 +14,6 @@ DEFAULT_PC_ADDRESS = 0x200
 FONT_START_ADDRESS = 0x000
 
 
-def _decode_x_y(opcode: int) -> tuple[int, int]:
-    x = (opcode & 0x0F00) >> 8
-    y = (opcode & 0x00F0) >> 4
-    return (x, y)
-
-
-def _decode_x_y_n(opcode: int) -> tuple[int, int, int]:
-    x = (opcode & 0x0F00) >> 8
-    y = (opcode & 0x00F0) >> 4
-    n = opcode & 0x000F
-    return (x, y, n)
-
-
-def _decode_x_nn(opcode: int) -> tuple[int, int]:
-    x = (opcode & 0x0F00) >> 8
-    nn = opcode & 0x00FF
-    return (x, nn)
-
-
-def _decode_nnn(opcode: int) -> int:
-    return opcode & 0x0FFF
-
-
 @dataclass
 class Decoder:
     opcode: int
